@@ -20,7 +20,7 @@ bool hrlog(HRESULT hr, int line_number, const char * prompt_, ...);
     (hrlog((expr), __LINE__, #expr))
 #else
 #define HRLOG(hr, ...)
-#define HRLOG_EXEC(expr)
+#define HRLOG_EXEC(expr) ( SUCCEEDED(expr) ? true : false )
 #endif
 
 
