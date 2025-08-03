@@ -3,21 +3,23 @@
 #include <sal.h>
 #include <dshow.h>
 #include <commctrl.h>
-
 #include <initguid.h>
 #include <objbase.h>
 #include <ole2.h>
+#include <comdef.h>
 
 #pragma comment(lib, "strmiids.lib")
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "oleaut32.lib")
 #pragma comment(lib, "comctl32.lib")
 
+#include "hrlog.h"
+
 // Define necessary GUIDs
 const IID IID_ISpecifyPropertyPages = { 0xB196B28B,0xBAB4,0x101A,{0xB6,0x9C,0x00,0xAA,0x00,0x34,0x1D,0x07} };
 
 int ShowCameraProperties(int deviceIndex) {
-    HRESULT hr;
+    HRESULT hr = 0;
     ICreateDevEnum* pDevEnum = nullptr;
     IEnumMoniker* pEnum = nullptr;
     IMoniker* pMoniker = nullptr;
@@ -25,17 +27,27 @@ int ShowCameraProperties(int deviceIndex) {
     int result = 0;
 
     // Initialize COM
-    hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-    if (FAILED(hr)) return 0;
+    //hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    //if (! HRLOG(hr, "CoInitializeEx")) return 0;
+
+    if (!HRLOG_EXEC(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED))) {
+		return 0;  // Initialization failed
+	}
 
     // Create device enumerator
-    hr = CoCreateInstance(CLSID_SystemDeviceEnum, nullptr, CLSCTX_INPROC_SERVER,
-        IID_ICreateDevEnum, (void**)&pDevEnum);
-    if (FAILED(hr)) goto cleanup;
+    if (!HRLOG_EXEC(
+    CoCreateInstance(CLSID_SystemDeviceEnum, nullptr, CLSCTX_INPROC_SERVER,
+		IID_ICreateDevEnum, (void**)&pDevEnum))) goto cleanup;
+    // Create device enumerator interface
+	//hr = pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pEnum, 0);
+
+	//if (!HRLOG(hr, "Failed to create device enumerator")) goto cleanup;
 
     // Create enumerator for video devices
-    hr = pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pEnum, 0);
-    if (FAILED(hr)) goto cleanup;
+    if (!HRLOG_EXEC(
+		hr = pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pEnum, 0))) 
+        goto cleanup;
+    
     if (hr == S_FALSE) goto cleanup;  // No devices
 
     // Find requested device
@@ -50,25 +62,31 @@ int ShowCameraProperties(int deviceIndex) {
         IPropertyBag* pPropBag = nullptr;
 
         // Bind to filter
-        hr = pMoniker->BindToObject(nullptr, nullptr, IID_IBaseFilter, (void**)&pFilter);
-        if (FAILED(hr)) {
+        if (!HRLOG_EXEC(
+            pMoniker->BindToObject(nullptr, nullptr, IID_IBaseFilter, (void**)&pFilter))) 
+        {
             pMoniker->Release();
             continue;
-        }
+		}
+        
 
         // Get property pages interface
-        hr = pFilter->QueryInterface(IID_ISpecifyPropertyPages, (void**)&pProp);
-        if (SUCCEEDED(hr)) {
-            // Get device friendly name
-            WCHAR deviceName[256] = L"Camera Properties";
-            hr = pMoniker->BindToStorage(nullptr, nullptr, IID_IPropertyBag, (void**)&pPropBag);
-            if (SUCCEEDED(hr)) {
-                VARIANT varName;
-                VariantInit(&varName);
-                hr = pPropBag->Read(L"FriendlyName", &varName, nullptr);
+        if (HRLOG_EXEC(
+            pFilter->QueryInterface(IID_ISpecifyPropertyPages, (void**)&pProp
+            ))) 
+        {
+            // Get device friendly name using _bstr_t for automatic cleanup
+            _bstr_t deviceName(L"Camera Properties");
+            if (
+                HRLOG_EXEC(
+                    pMoniker->BindToStorage(nullptr, nullptr, IID_IPropertyBag, (void**)&pPropBag)
+                )
+                )
+            {
+                _variant_t varName;  // Use _variant_t for automatic cleanup
+                HRESULT hr = pPropBag->Read(L"FriendlyName", &varName, nullptr);
                 if (SUCCEEDED(hr) && varName.vt == VT_BSTR) {
-                    wcsncpy_s(deviceName, 256, varName.bstrVal, 255);
-                    VariantClear(&varName);
+                    deviceName = varName.bstrVal;
                 }
                 pPropBag->Release();
             }
@@ -96,6 +114,7 @@ int ShowCameraProperties(int deviceIndex) {
             }
             pProp->Release();
         }
+
         pFilter->Release();
         pMoniker->Release();
         break;
