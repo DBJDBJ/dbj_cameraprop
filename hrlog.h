@@ -1,11 +1,10 @@
 #pragma once
 #ifndef HRLOG_H
 #define HRLOG_H
+// (c) dbj@dbj.org, NO LICENSE LICENSE, CC BY SA 4.0
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-
-
 
 // only while debugging
 // log the com error message made from HRESULT hr
@@ -22,6 +21,5 @@ bool hrlog(HRESULT hr, int line_number, const char * prompt_, ...);
 #define HRLOG(hr, ...)
 #define HRLOG_EXEC(expr) ( SUCCEEDED(expr) ? true : false )
 #endif
-
 
 #endif // HRLOG_H
