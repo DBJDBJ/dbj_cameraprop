@@ -2,9 +2,10 @@
 #include <windows.h>
 #include <crtdbg.h>
 #include <comdef.h>
-#include <shlwapi.h>
 #include <strsafe.h>
-#pragma comment(lib, "shlwapi.lib")
+
+//#include <shlwapi.h>
+//#pragma comment(lib, "shlwaspi.lib")
 
 #include "hrlog.h"
 
@@ -79,7 +80,7 @@ public:
 
     void Log(HRESULT hr, int line_number, const char* prompt_) {
         // Only log success messages in debug mode
-        if (!hrlog_debug || FAILED(hr) || hFile == INVALID_HANDLE_VALUE) {
+        if (!hrlog_debug || hFile == INVALID_HANDLE_VALUE) {
             return;
         }
 
@@ -93,8 +94,10 @@ public:
             st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
         // Get error message
-		// hold it in a _bstr_t for automatic memory management
+		// hold it in a _bstr_t instance explicitly
 		_bstr_t errorMsgBSTR = make_error_msg(hr);
+		// this is just a pointer into the BSTR data
+		// ditto we need to keep that BSTR alive
         const char* statusMsg = (const char*)errorMsgBSTR;
 
         // Format complete log entry
@@ -109,7 +112,7 @@ public:
     }
 };
 
-// Convenience function and macro
+// visible to callers
 bool hrlog(HRESULT hr, int line_number, const char* prompt_, ...) {
     // logging only while debugging
     if (hrlog_debug) {

@@ -26,10 +26,6 @@ int ShowCameraProperties(int deviceIndex) {
     ULONG cFetched = 0;
     int result = 0;
 
-    // Initialize COM
-    //hr = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
-    //if (! HRLOG(hr, "CoInitializeEx")) return 0;
-
     if (!HRLOG_EXEC(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED))) {
 		return 0;  // Initialization failed
 	}
@@ -38,10 +34,6 @@ int ShowCameraProperties(int deviceIndex) {
     if (!HRLOG_EXEC(
     CoCreateInstance(CLSID_SystemDeviceEnum, nullptr, CLSCTX_INPROC_SERVER,
 		IID_ICreateDevEnum, (void**)&pDevEnum))) goto cleanup;
-    // Create device enumerator interface
-	//hr = pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pEnum, 0);
-
-	//if (!HRLOG(hr, "Failed to create device enumerator")) goto cleanup;
 
     // Create enumerator for video devices
     if (!HRLOG_EXEC(
